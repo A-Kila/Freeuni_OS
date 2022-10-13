@@ -1,0 +1,2 @@
+Syscall like fstat should work, since it reads kernel data, does not modify anything or does not perform any tasks like wait.
+page 0 contains code and data. page 2 contains user stack. user can't read/write memory mapped by page 1 because it is a guard page, uvmclear marks it invalid for the user. third to the last page (509) contains USYSCALL.

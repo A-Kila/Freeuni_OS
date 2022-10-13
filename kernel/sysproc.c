@@ -71,11 +71,34 @@ sys_sleep(void)
 
 
 #ifdef LAB_PGTBL
+#define BIT_SIZE(type) (sizeof(type) * 8)
 int
 sys_pgaccess(void)
 {
-  // lab pgtbl: your code here.
-  return 0;
+  uint64 pa;
+  int num_pages;
+  uint64 mask;
+
+  argaddr(0, &pa);
+  argint(1, &num_pages);
+  argaddr(2, &mask);
+
+  int mask_size= (num_pages + BIT_SIZE(char) - 1) / BIT_SIZE(char);
+  char local_mask[mask_size];
+  memset(local_mask, 0, mask_size);
+  pagetable_t pt = myproc()->pagetable;
+
+  for (int i = 0; i < num_pages; i++) {
+    pte_t *pte = walk(pt, pa + i * PGSIZE, 0);
+    if (pte == 0) return -1;
+
+    if (*pte & PTE_A) {
+      local_mask[i / BIT_SIZE(char)] |= 1 << (i % BIT_SIZE(char));
+      *pte &= ~PTE_A;
+    }
+  }
+
+  return copyout(pt, mask, local_mask, sizeof(local_mask));
 }
 #endif
 
