@@ -1,0 +1,6 @@
+syscall is called by usertrap()
+value of p->trapframe->a7 = 0x7. a7 is a register holding the number(index) of a system call
+it was running in machine mode
+instruction: lw	s2,0(zero) # 0 <_entry-0x80000000>;  register: s2
+kernel is accessing memory that is only accesable in machine mode, not in kernel mode.
+binary name = initcode; process id is 1
