@@ -1,0 +1,6 @@
+1. Registers that strat with a hold arguments. In printf 13 is held in a2 register.
+2. Assembly code for function f call for main is on address 0x26 (function is inlined so the value 12 is precomputed). function call for g happens in function f at address 0x14 (0x14-0x18).
+3. printf is located at address 0x642.
+4. The register ra hold number 0x38.
+5. Output of the program is "He110 World". "i" should be set to 1919706112. You would not need to change 57616.
+6. The printed value would be the whatever was in a2 register before.
