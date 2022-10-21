@@ -142,8 +142,9 @@ backtrace(void)
 
   printf("backtrace:\n");
 
+  uint64 stack_page = PGROUNDDOWN(fp);
   while (1) {
-    if (PGROUNDDOWN(fp) == fp)
+    if (PGROUNDDOWN(fp) != stack_page)
       break;
     
     uint64 ra = *(uint64*)(fp - 8);
