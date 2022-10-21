@@ -132,6 +132,18 @@ found:
     return 0;
   }
 
+  // traps lab variable init
+  p->alarm_handler = 0;
+  p->alarm_ticks = 0;
+  p->alarm_ticks_passed = 0; 
+  p->alarm_enabled = 1;
+
+  if((p->saved_trapframe = (struct trapframe *)kalloc()) == 0){
+    freeproc(p);
+    release(&p->lock);
+    return 0;
+  }
+
   // An empty user page table.
   p->pagetable = proc_pagetable(p);
   if(p->pagetable == 0){
@@ -158,6 +170,9 @@ freeproc(struct proc *p)
   if(p->trapframe)
     kfree((void*)p->trapframe);
   p->trapframe = 0;
+  if(p->saved_trapframe)
+    kfree((void*)p->saved_trapframe);
+  p->saved_trapframe = 0;
   if(p->pagetable)
     proc_freepagetable(p->pagetable, p->sz);
   p->pagetable = 0;
