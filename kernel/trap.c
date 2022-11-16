@@ -29,6 +29,71 @@ trapinithart(void)
   w_stvec((uint64)kernelvec);
 }
 
+void
+handle_write_fault(struct proc *p) {
+  uint64 va = r_stval();
+
+  if (va >= p->sz || va < 0) {
+      printf("pagefault: pid %d %s: trap va %p ip %p\n\t    - va is out of bounds\n",
+            p->pid, p->name, va, p->trapframe->epc);
+
+    setkilled(p);
+    return;
+  } 
+
+  char *mem;
+  pte_t *pte = walk(p->pagetable, va, 0);
+  if(pte == 0 || (*pte & PTE_V) == 0 || (*pte & PTE_U) == 0) {
+    printf("pagefault: pid %d %s: trap va %p ip %p\n\t    - va is not mapped\n",
+            p->pid, p->name, va, p->trapframe->epc);
+
+    setkilled(p);
+    return;
+  }
+
+  uint64 pa = PTE2PA(*pte);
+  uint flags = PTE_FLAGS(*pte);
+
+  if (!(flags & PTE_COW)) {
+    printf("pagefault: pid %d %s: trap va %p ip %p\n\t    - not writable\n",
+            p->pid, p->name, va, p->trapframe->epc);
+
+    setkilled(p);
+    return;
+  }
+
+  flags = (flags & ~(PTE_COW)) | PTE_W;
+  if (get_refcount((void *)pa) == 1) {
+    if (mappages(p->pagetable, PGROUNDDOWN(va), PGSIZE, pa, flags) != 0) {
+      printf("pagefault: pid %d %s: trap va %p ip %p\n\t    - mappages failed\n",
+            p->pid, p->name, va, p->trapframe->epc);
+    
+      setkilled(p);
+    }
+
+    return;
+  }
+  decr_refcount((void *)pa);
+
+  if ((mem = kalloc()) == 0) {
+    printf("pagefault: pid %d %s: trap va %p ip %p\n\t    - out of memory\n",
+            p->pid, p->name, va, p->trapframe->epc);
+
+    setkilled(p);
+    return;
+  }
+  memmove(mem, (char *)pa, PGSIZE);
+
+  if (mappages(p->pagetable, PGROUNDDOWN(va), PGSIZE, (uint64)mem, flags) != 0) {
+    printf("pagefault: pid %d %s: trap va %p ip %p\n\t    - mappages failed\n",
+            p->pid, p->name, va, p->trapframe->epc);
+
+    kfree(mem);
+    setkilled(p);
+    return;
+  }
+}
+
 //
 // handle an interrupt, exception, or system call from user space.
 // called from trampoline.S
@@ -67,6 +132,9 @@ usertrap(void)
     syscall();
   } else if((which_dev = devintr()) != 0){
     // ok
+  } else if(r_scause() == 15){
+    // write page fault
+    handle_write_fault(p);
   } else {
     printf("usertrap(): unexpected scause %p pid=%d\n", r_scause(), p->pid);
     printf("            sepc=%p stval=%p\n", r_sepc(), r_stval());
