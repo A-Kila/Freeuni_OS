@@ -1,0 +1,4 @@
+It could be the case, that multiple threads are trying to add different key entries at the same location.
+In that case, one thread will add an entry, but the other will overwrite it with its own.
+This problem happens in put function. After a thread chooses a location for its key in loop on line 46, before
+it changes the value of this location that position is still free for other threads to choose.
